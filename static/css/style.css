@@ -164,6 +164,12 @@ a { color: inherit; text-decoration: none; }
     margin-bottom: 1.5rem;
 }
 
+.hero-title-main {
+    font-family: 'Fraunces', Georgia, serif;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+}
+
 .hero-title-accent { color: #4c9d7a; }
 
 .hero-subtitle {
