@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}Profile — Spendly{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/profile.css') }}">
+{% endblock %}
+
+{% block content %}
+
+<section class="profile-page">
+
+    <div class="profile-user-card">
+        <div class="profile-avatar">{{ user.initials }}</div>
+        <div class="profile-user-info">
+            <h1 class="profile-name">{{ user.name }}</h1>
+            <p class="profile-email">{{ user.email }}</p>
+            <p class="profile-meta">Member since {{ user.member_since }}</p>
+        </div>
+    </div>
+
+    <div class="profile-stats">
+        <div class="stat-card">
+            <span class="stat-label">Total spent</span>
+            <span class="stat-value">₹{{ "%.2f"|format(stats.total_spent) }}</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-label">Transactions</span>
+            <span class="stat-value">{{ stats.transaction_count }}</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-label">Top category</span>
+            <span class="stat-value">{{ stats.top_category }}</span>
+        </div>
+    </div>
+
+    <div class="profile-section">
+        <h2 class="profile-section-title">Transaction history</h2>
+        <div class="table-wrap">
+            <table class="txn-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Date</th>
+                        <th scope="col">Description</th>
+                        <th scope="col">Category</th>
+                        <th scope="col" class="cell-amount">Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for t in transactions %}
+                    <tr>
+                        <td class="cell-date">{{ t.date }}</td>
+                        <td>{{ t.description }}</td>
+                        <td><span class="badge badge-{{ t.category|lower }}">{{ t.category }}</span></td>
+                        <td class="cell-amount">₹{{ "%.2f"|format(t.amount) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="profile-section">
+        <h2 class="profile-section-title">Category breakdown</h2>
+        <ul class="category-list">
+            {% for c in categories %}
+            <li class="category-row">
+                <div class="category-head">
+                    <span class="category-name">{{ c.name }}</span>
+                    <span class="category-total">₹{{ "%.2f"|format(c.total) }} · {{ c.percent }}%</span>
+                </div>
+                <progress class="category-bar category-{{ c.name|lower }}" value="{{ c.percent }}" max="100"></progress>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+
+</section>
+
+{% endblock %}
