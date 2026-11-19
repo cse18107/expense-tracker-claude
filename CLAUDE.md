@@ -12,6 +12,7 @@ spendly/
 |-- app.py                  # All routes - single file, no blueprint
 |-- database/      
 |   |___ db.py              # SQLite helpers: get_db(), init_db(), seed_db()
+|   |___ queries.py         # Read-only query helpers for profile data (Step 5); uses get_db()
 |-- templates/
 |   |-- base.html           # Shared layout - all templates must extend this
 |   |__ *.html              # One template per page
@@ -27,7 +28,7 @@ spendly/
 
 **Where  things belong:**
 - New routes -> `app.py` only, no blueprints
-- DB logic -> `database/db.py` only, never inline in routes
+- DB logic -> `database/db.py` (schema and connection helpers) or `database/queries.py` (profile read queries), never inline in routes
 - New pages -> `.html` file extending `base.html`
 - Page-specific styles -> new `.css` file, not inline `<style>` tags
 
@@ -74,7 +75,7 @@ Run from the `spendly/` directory (the git root).
 | `GET /register` | Implemented — renders `register.html` |
 | `GET /login` | Implemented — renders `login.html` |
 | `GET /logout` | Implemented — clears session, redirects to `/` |
-| `GET /profile` | Implemented — static UI with hardcoded data, login-protected (Step 4; DB wiring in Step 5) |
+| `GET /profile` | Implemented — DB-backed via `database/queries.py`, login-protected (Steps 4–5) |
 | `GET /expenses/add` | Stub — Step 7 |
 | `GET /expenses/<id>/edit` | Stub — Step 8 |
 | `GET /expenses/<id>/delete` | Stub — Step 9 |

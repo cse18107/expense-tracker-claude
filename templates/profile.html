@@ -36,6 +36,7 @@
 
     <div class="profile-section">
         <h2 class="profile-section-title">Transaction history</h2>
+        {% if transactions %}
         <div class="table-wrap">
             <table class="txn-table">
                 <thead>
@@ -58,10 +59,14 @@
                 </tbody>
             </table>
         </div>
+        {% else %}
+        <p class="empty-state">No transactions yet. Your expense history will appear here.</p>
+        {% endif %}
     </div>
 
     <div class="profile-section">
         <h2 class="profile-section-title">Category breakdown</h2>
+        {% if categories %}
         <ul class="category-list">
             {% for c in categories %}
             <li class="category-row">
@@ -73,6 +78,9 @@
             </li>
             {% endfor %}
         </ul>
+        {% else %}
+        <p class="empty-state">No spending to break down yet. Category totals will appear here.</p>
+        {% endif %}
     </div>
 
 </section>
