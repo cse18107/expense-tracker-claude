@@ -1,7 +1,9 @@
 import os
 import re
 import sqlite3
-from datetime import datetime
+from datetime import date, datetime
+from decimal import Decimal, InvalidOperation
+from functools import wraps
 
 from flask import (
     Flask,
@@ -14,7 +16,15 @@ from flask import (
 )
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from database.db import create_user, get_db, get_user_by_email, init_db, seed_db
+from database.db import (
+    CATEGORIES,
+    create_expense,
+    create_user,
+    get_db,
+    get_user_by_email,
+    init_db,
+    seed_db,
+)
 from database.queries import (
     get_category_breakdown,
     get_recent_transactions,
@@ -24,10 +34,21 @@ from database.queries import (
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-only-change-me")
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 
 with app.app_context():
     init_db()
     seed_db()
+
+
+def login_required(view):
+    """Redirect to the login page when the session has no logged-in user."""
+    @wraps(view)
+    def wrapped(*args, **kwargs):
+        if not session.get("user_id"):
+            return redirect(url_for("login"))
+        return view(*args, **kwargs)
+    return wrapped
 
 
 # ------------------------------------------------------------------ #
@@ -158,10 +179,8 @@ def _parse_date_range():
 
 
 @app.route("/profile")
+@login_required
 def profile():
-    if not session.get("user_id"):
-        return redirect(url_for("login"))
-
     user_id = session["user_id"]
     user = get_user_by_id(user_id)
     if user is None:
@@ -183,9 +202,115 @@ def profile():
     )
 
 
-@app.route("/expenses/add")
+@app.route("/analytics")
+@login_required
+def analytics():
+    return render_template("analytics.html")
+
+
+MAX_DESCRIPTION_LENGTH = 200
+MAX_AMOUNT = Decimal("1000000000")
+
+
+def _parse_amount(raw):
+    """Return the amount as a Decimal, or raise ValueError with a user message."""
+    try:
+        amount = Decimal(raw)
+    except InvalidOperation:
+        raise ValueError("Amount must be a number.") from None
+    if not amount.is_finite() or amount <= 0:
+        raise ValueError("Amount must be greater than zero.")
+    # Checked before quantize(): quantize raises on huge exponents such as 1e999999.
+    if amount > MAX_AMOUNT:
+        raise ValueError("Amount is too large.")
+    if amount != amount.quantize(Decimal("0.01")):
+        raise ValueError("Amount can have at most 2 decimal places.")
+    return amount
+
+
+def _parse_date(raw):
+    """Return the date, or raise ValueError with a user message."""
+    try:
+        # The regex rejects loose formats that strptime would accept.
+        if not DATE_PARAM_PATTERN.fullmatch(raw):
+            raise ValueError
+        parsed = datetime.strptime(raw, "%Y-%m-%d").date()
+    except ValueError:
+        raise ValueError("Date must be a valid YYYY-MM-DD date.") from None
+    if parsed > date.today():
+        raise ValueError("Date cannot be in the future.")
+    return parsed
+
+
+def _validate_expense_form(form):
+    """Validate add-expense form fields.
+
+    Returns (clean_values, None) when valid, or (None, error_message) otherwise.
+    Stored values are: amount (float), category, date (YYYY-MM-DD), description
+    (None when empty).
+    """
+    amount_raw = form.get("amount", "").strip()
+    category = form.get("category", "").strip()
+    date_raw = form.get("date", "").strip()
+    description = form.get("description", "").strip()
+
+    if not amount_raw or not category or not date_raw:
+        return None, "Amount, category and date are required."
+
+    try:
+        amount = _parse_amount(amount_raw)
+        if category not in CATEGORIES:
+            raise ValueError("Please choose a valid category.")
+        expense_date = _parse_date(date_raw)
+        if len(description) > MAX_DESCRIPTION_LENGTH:
+            raise ValueError(
+                f"Description must be {MAX_DESCRIPTION_LENGTH} characters or fewer."
+            )
+    except ValueError as exc:
+        return None, str(exc)
+
+    # Money is validated as Decimal above, then stored as float because the
+    # expenses.amount column is REAL.
+    cleaned = {
+        "amount": float(amount),
+        "category": category,
+        "expense_date": expense_date.isoformat(),
+        "description": description or None,
+    }
+    return cleaned, None
+
+
+@app.route("/expenses/add", methods=["GET", "POST"])
+@login_required
 def add_expense():
-    return "Add expense — coming in Step 7"
+    today = date.today().isoformat()
+    if request.method == "GET":
+        return render_template(
+            "add_expense.html",
+            categories=CATEGORIES,
+            today=today,
+            max_description_length=MAX_DESCRIPTION_LENGTH,
+            form={},
+        )
+
+    expense, error = _validate_expense_form(request.form)
+    if error:
+        return render_template(
+            "add_expense.html",
+            error=error,
+            categories=CATEGORIES,
+            today=today,
+            max_description_length=MAX_DESCRIPTION_LENGTH,
+            form=request.form,
+        ), 400
+
+    try:
+        create_expense(session["user_id"], **expense)
+    except sqlite3.IntegrityError:
+        # The session points at a user who no longer exists (deleted or DB reset).
+        session.clear()
+        return redirect(url_for("login"))
+    return redirect(url_for("profile"))
 
 
 @app.route("/expenses/<int:id>/edit")

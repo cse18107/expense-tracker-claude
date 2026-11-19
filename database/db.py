@@ -70,6 +70,24 @@ def create_user(name, email, password_hash):
         conn.close()
 
 
+def create_expense(user_id, amount, category, expense_date, description):
+    """Insert one expense row and return its id.
+
+    expense_date is a YYYY-MM-DD string; description may be None.
+    """
+    conn = get_db()
+    try:
+        cursor = conn.execute(
+            "INSERT INTO expenses (user_id, amount, category, date, description) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (user_id, amount, category, expense_date, description),
+        )
+        conn.commit()
+        return cursor.lastrowid
+    finally:
+        conn.close()
+
+
 def seed_db():
     conn = get_db()
     try:

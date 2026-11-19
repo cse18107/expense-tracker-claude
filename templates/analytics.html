@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block title %}Analytics — Spendly{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/analytics.css') }}">
+{% endblock %}
+
+{% block content %}
+
+<section class="analytics-coming-soon">
+
+    <span class="analytics-status">• Work in progress</span>
+
+    <h1 class="analytics-title">This page is on its way.</h1>
+    <p class="analytics-subtitle">Coming soon.</p>
+
+    <div class="analytics-message">
+        <p>We’re still building this part of Spendly.</p>
+        <p>Head back home to keep tracking your expenses.</p>
+    </div>
+
+    <a href="{{ url_for('landing') }}" class="analytics-home-btn">Back to home</a>
+
+</section>
+
+{% endblock %}
