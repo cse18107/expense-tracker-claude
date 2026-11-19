@@ -183,6 +183,35 @@
 .category-bar::-webkit-progress-value { background: var(--cat, var(--accent)); border-radius: 999px; }
 .category-bar::-moz-progress-bar { background: var(--cat, var(--accent)); border-radius: 999px; }
 
+/* ---------- Date filter ---------- */
+
+.date-filter {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 1rem 1.25rem;
+}
+
+.date-filter-fields {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.date-filter-fields .form-group { margin-bottom: 0; }
+
+.date-filter-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.filter-caption {
+    width: 100%;
+    font-size: 0.9rem;
+    color: var(--ink-muted);
+}
+
 /* ---------- Responsive ---------- */
 
 @media (max-width: 640px) {
@@ -190,6 +219,8 @@
     .profile-stats { grid-template-columns: 1fr; }
     .profile-user-card { padding: 1.5rem; }
     .profile-section { padding: 1.25rem; }
+    .date-filter-fields { flex-direction: column; width: 100%; }
+    .date-filter-fields .form-group { width: 100%; }
 }
 
 .empty-state {

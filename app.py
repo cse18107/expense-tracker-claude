@@ -1,7 +1,17 @@
 import os
+import re
 import sqlite3
+from datetime import datetime
 
-from flask import Flask, redirect, render_template, request, session, url_for
+from flask import (
+    Flask,
+    abort,
+    redirect,
+    render_template,
+    request,
+    session,
+    url_for,
+)
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from database.db import create_user, get_db, get_user_by_email, init_db, seed_db
@@ -118,6 +128,35 @@ def logout():
     return redirect(url_for("landing"))
 
 
+DATE_PARAM_PATTERN = re.compile(r"\d{4}-\d{2}-\d{2}")
+
+
+def _parse_date_range():
+    """Read optional `start`/`end` query params as dates.
+
+    Returns (start_date, end_date), each None when not supplied. Aborts with
+    400 when a value is not a zero-padded YYYY-MM-DD date, or when start is
+    after end.
+    """
+    dates = []
+    for name in ("start", "end"):
+        raw = request.args.get(name, "").strip()
+        if not raw:
+            dates.append(None)
+            continue
+        if not DATE_PARAM_PATTERN.fullmatch(raw):
+            abort(400)
+        try:
+            dates.append(datetime.strptime(raw, "%Y-%m-%d").date())
+        except ValueError:
+            abort(400)
+
+    start_date, end_date = dates
+    if start_date and end_date and start_date > end_date:
+        abort(400)
+    return start_date, end_date
+
+
 @app.route("/profile")
 def profile():
     if not session.get("user_id"):
@@ -129,12 +168,18 @@ def profile():
         session.clear()
         return redirect(url_for("login"))
 
+    start_date, end_date = _parse_date_range()
+    start = start_date.isoformat() if start_date else None
+    end = end_date.isoformat() if end_date else None
+
     return render_template(
         "profile.html",
         user=user,
-        stats=get_summary_stats(user_id),
-        transactions=get_recent_transactions(user_id),
-        categories=get_category_breakdown(user_id),
+        stats=get_summary_stats(user_id, start=start, end=end),
+        transactions=get_recent_transactions(user_id, start=start, end=end),
+        categories=get_category_breakdown(user_id, start=start, end=end),
+        start_date=start_date,
+        end_date=end_date,
     )
 
 

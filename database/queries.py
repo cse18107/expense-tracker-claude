@@ -10,6 +10,22 @@ from datetime import datetime
 from database.db import get_db
 
 
+def _date_range_clause(start, end):
+    """Build an optional date-range WHERE fragment.
+
+    Only fixed SQL literals are concatenated; the bounds are returned as
+    params for `?` placeholders.
+    """
+    clause, params = "", []
+    if start:
+        clause += " AND date >= ?"
+        params.append(start)
+    if end:
+        clause += " AND date <= ?"
+        params.append(end)
+    return clause, params
+
+
 # --- SECTION: user ----------------------------------------------------------
 
 def get_user_by_id(user_id):
@@ -40,13 +56,14 @@ def get_user_by_id(user_id):
 
 # --- SECTION: summary stats -------------------------------------------------
 
-def get_summary_stats(user_id):
+def get_summary_stats(user_id, start=None, end=None):
+    range_sql, range_params = _date_range_clause(start, end)
     conn = get_db()
     try:
         totals = conn.execute(
             "SELECT COALESCE(SUM(amount), 0) AS total, COUNT(*) AS cnt "
-            "FROM expenses WHERE user_id = ?",
-            (user_id,),
+            "FROM expenses WHERE user_id = ?" + range_sql,
+            (user_id, *range_params),
         ).fetchone()
 
         if totals["cnt"] == 0:
@@ -57,11 +74,11 @@ def get_summary_stats(user_id):
             }
 
         top = conn.execute(
-            "SELECT category FROM expenses WHERE user_id = ? "
+            "SELECT category FROM expenses WHERE user_id = ?" + range_sql + " "
             "GROUP BY category "
             "ORDER BY SUM(amount) DESC, category ASC "
             "LIMIT 1",
-            (user_id,),
+            (user_id, *range_params),
         ).fetchone()
 
         return {
@@ -75,7 +92,8 @@ def get_summary_stats(user_id):
 
 # --- SECTION: transactions --------------------------------------------------
 
-def get_recent_transactions(user_id, limit=10):
+def get_recent_transactions(user_id, limit=10, start=None, end=None):
+    range_sql, range_params = _date_range_clause(start, end)
     conn = get_db()
     try:
         rows = conn.execute(
@@ -83,10 +101,11 @@ def get_recent_transactions(user_id, limit=10):
             SELECT date, description, category, amount
             FROM expenses
             WHERE user_id = ?
+            """ + range_sql + """
             ORDER BY date DESC, id DESC
             LIMIT ?
             """,
-            (user_id, limit),
+            (user_id, *range_params, limit),
         ).fetchall()
     finally:
         conn.close()
@@ -104,7 +123,8 @@ def get_recent_transactions(user_id, limit=10):
 
 # --- SECTION: category breakdown --------------------------------------------
 
-def get_category_breakdown(user_id):
+def get_category_breakdown(user_id, start=None, end=None):
+    range_sql, range_params = _date_range_clause(start, end)
     conn = get_db()
     try:
         rows = conn.execute(
@@ -112,10 +132,11 @@ def get_category_breakdown(user_id):
             SELECT category AS name, SUM(amount) AS total
             FROM expenses
             WHERE user_id = ?
+            """ + range_sql + """
             GROUP BY category
             ORDER BY total DESC, name ASC
             """,
-            (user_id,),
+            (user_id, *range_params),
         ).fetchall()
     finally:
         conn.close()

@@ -8,6 +8,9 @@
 
 {% block content %}
 
+{% set filter_active = start_date or end_date %}
+{% set date_fmt = '%d %b %Y' %}
+
 <section class="profile-page">
 
     <div class="profile-user-card">
@@ -18,6 +21,35 @@
             <p class="profile-meta">Member since {{ user.member_since }}</p>
         </div>
     </div>
+
+    <form class="profile-section date-filter" method="get" action="{{ url_for('profile') }}">
+        <div class="date-filter-fields">
+            <div class="form-group">
+                <label for="filter-start">From</label>
+                <input class="form-input" type="date" id="filter-start" name="start" value="{{ start_date or '' }}">
+            </div>
+            <div class="form-group">
+                <label for="filter-end">To</label>
+                <input class="form-input" type="date" id="filter-end" name="end" value="{{ end_date or '' }}">
+            </div>
+        </div>
+        <div class="date-filter-actions">
+            <button class="btn-primary" type="submit">Apply</button>
+            <a class="btn-ghost" href="{{ url_for('profile') }}">Clear</a>
+        </div>
+        {% if filter_active %}
+        <p class="filter-caption">
+            Showing
+            {% if start_date and end_date %}
+                {{ start_date.strftime(date_fmt) }} – {{ end_date.strftime(date_fmt) }}
+            {% elif start_date %}
+                from {{ start_date.strftime(date_fmt) }}
+            {% else %}
+                up to {{ end_date.strftime(date_fmt) }}
+            {% endif %}
+        </p>
+        {% endif %}
+    </form>
 
     <div class="profile-stats">
         <div class="stat-card">
@@ -60,7 +92,7 @@
             </table>
         </div>
         {% else %}
-        <p class="empty-state">No transactions yet. Your expense history will appear here.</p>
+        <p class="empty-state">{% if filter_active %}No transactions in this date range.{% else %}No transactions yet. Your expense history will appear here.{% endif %}</p>
         {% endif %}
     </div>
 
@@ -79,7 +111,7 @@
             {% endfor %}
         </ul>
         {% else %}
-        <p class="empty-state">No spending to break down yet. Category totals will appear here.</p>
+        <p class="empty-state">{% if filter_active %}No spending in this date range.{% else %}No spending to break down yet. Category totals will appear here.{% endif %}</p>
         {% endif %}
     </div>
 
